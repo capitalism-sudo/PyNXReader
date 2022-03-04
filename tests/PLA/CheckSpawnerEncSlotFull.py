@@ -72,7 +72,7 @@ def generate_from_seed(seed,rolls,guaranteed_ivs=0,set_gender=False):
     return ec,pid,ivs,ability,gender,nature,shiny
 
 def read_wild_rng(group_id,rolls,guaranteed_ivs,encsum,encmin,encmax):
-    group_seed = reader.read_pointer_int(f"main+4268ee0]+330]+{0x70+group_id*0x440+0x408:X}",8)
+    group_seed = reader.read_pointer_int(f"[[main+42a6ee0]+330]+{0x70+group_id*0x440+0x408:X}",8)
     main_rng = XOROSHIRO(group_seed)
     for adv in range(1,35001):
         rng = XOROSHIRO(*main_rng.seed.copy())
@@ -84,8 +84,9 @@ def read_wild_rng(group_id,rolls,guaranteed_ivs,encsum,encmin,encmax):
             generate_from_seed(fixed_seed,rolls,guaranteed_ivs)
         if shiny:
             if (encslot > encmin and encslot < encmax):
-                print("Generator Seed: ",hex(spawner_seed))
+                #print("Generator Seed: ",hex(spawner_seed))
                 print("Enc Slot Value:",encslot)
+                #print(f"Memory pointer: [[main+42a6ee0]+330]+{0x70+group_id*0x440+0x20:X}")
                 break
         main_rng.next()
         main_rng.next()
