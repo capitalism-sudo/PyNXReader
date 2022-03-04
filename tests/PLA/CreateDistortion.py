@@ -2,6 +2,7 @@
 import signal
 import sys
 import json
+import time
 sys.path.append('../../')
 
 from nxreader import NXReader
@@ -70,8 +71,9 @@ if __name__ == "__main__":
     print("Whipping up a distortion! Don't do it too fast!")
     cont = True
     while cont:
-        reader.write_main_int(0x24672A4,0x5280010A,4)
-        reader.write_main_int(0x24672A4,0x7100052A,4)
+        reader.write_main_int(0x024A03B8,0x5280010A,4)
+        time.sleep(.6)
+        reader.write_main_int(0x024A03B8,0x7100052A,4)
         cont = True if input("Want Another? y/n").lower() == 'y' else False
 
     

@@ -57,6 +57,20 @@ def signal_handler(signal, advances): #CTRL+C handler
 
 signal.signal(signal.SIGINT, signal_handler)
 
+def print_pk_info(ec,pid,ivs,ability,gender,nature,shiny,encslot,seed,adv):
+    print(f"Spawner Seed: {seed:X}")
+    print(f"Advance: {adv}")
+    print(f"Encounter Slot: {encslot}")
+    if shiny:
+        print(f"Shiny: " + Back.GREEN + f"{shiny}" + Style.RESET_ALL)
+    else:
+        print(f"Shiny: " + Fore.RED + f"{shiny}" + Style.RESET_ALL)
+    print(f"EC: {ec:X} PID: {pid:X}")
+    print(f"Nature: {Util.STRINGS.natures[nature]} Ability: {ability}")
+    print(f"Gender: {gender}")
+    print(ivs)
+    print()
+    
 def generate_from_seed(seed,rolls,guaranteed_ivs=0,set_gender=False):
     rng = XOROSHIRO(seed)
     ec = rng.rand(0xFFFFFFFF)
@@ -107,6 +121,15 @@ def read_wild_rng(group_id,rolls,guaranteed_ivs,encounter_slot_sum,encounter_slo
         fixed_seed = rng.next()
         ec,pid,ivs,ability,gender,nature,shiny = \
             generate_from_seed(fixed_seed,rolls,guaranteed_ivs,set_gender)
+        #Debug code to test encounter slots
+        """
+        if shiny and (encounter_slot > 275 and encounter_slot < 276):
+            print(f"Adv: {adv}")
+            print(f"spawn seed: {hex(spawner_seed)}")
+            break
+        elif adv > 79000:
+            break
+        """    
         break
         main_rng.next()
         main_rng.next()
@@ -125,7 +148,7 @@ if __name__ == "__main__":
 
     Set map to the location you're hunting in.
     """
-    mapval = 2
+    mapval = 5
     
     rolls = int(input(f"Shiny Rolls: \n"))
     guaranteed_ivs = 0
@@ -158,20 +181,20 @@ if __name__ == "__main__":
                 locvar = locgr[location]
 #Obsidian Fieldlands
         if mapval == 1:
-            generator_seed = reader.read_pointer_int(f"[[[[[[main+428E268]+C0]+1C0]+{0x980 + i*0x8:X}]+18]+428]+C8",8)
+            generator_seed = reader.read_pointer_int(f"[[[[[[main+42CC4D8]+C0]+1C0]+{0x990 + i*0x8:X}]+18]+430]+C0",8)
 #Crimson Mirelands
         elif mapval == 2:
-            generator_seed = reader.read_pointer_int(f"[[[[[[main+428E268]+C0]+1C0]+{0xC78 + i*0x8:X}]+18]+428]+C8",8)
+            generator_seed = reader.read_pointer_int(f"[[[[[[main+42CC4D8]+C0]+1C0]+{0xC78 + i*0x8:X}]+18]+430]+C0",8)
 #Cobalt Coastlands
         elif mapval == 3:
-            generator_seed = reader.read_pointer_int(f"[[[[[[main+428E268]+C0]+1C0]+{0xCC0 + i*0x8:X}]+18]+428]+C8",8)
+            generator_seed = reader.read_pointer_int(f"[[[[[[main+42CC4D8]+C0]+1C0]+{0xCC0 + i*0x8:X}]+18]+430]+C0",8)
 #Coronet Highlands
         elif mapval == 4:
-            generator_seed = reader.read_pointer_int(f"[[[[[[main+428E268]+C0]+1C0]+{0x828 + i*0x8:X}]+18]+428]+C8",8)
+            generator_seed = reader.read_pointer_int(f"[[[[[[main+42CC4D8]+C0]+1C0]+{0x818 + i*0x8:X}]+18]+430]+C0",8)
 #            generator_seed = reader.read_pointer_int(f"[[[[[[main+428E268]+C0]+1C0]+{0x828 + i*0x8:X}]+18]+428]+D8",8)
 #Alabaster Icelands
         elif mapval == 5:
-            generator_seed = reader.read_pointer_int(f"[[[[[[main+428E268]+C0]+1C0]+{0x948 + i*0x8:X}]+18]+428]+C8",8)
+            generator_seed = reader.read_pointer_int(f"[[[[[[main+42CC4D8]+C0]+1C0]+{0x948 + i*0x8:X}]+18]+430]+C0",8)
         encounter_slot_sum = 112
         encounter_slot_range = (0,112)
         if mapval == 2:
@@ -198,7 +221,7 @@ if __name__ == "__main__":
         else:
             if shiny and shinyfilter:
                 if i not in [0,4,8,12,16,20] and locvar.lower() != "unknown":
-                    print(f"Generator Seed: {hex(generator_seed)}")
+                    print(f"Generator Seed: {generator_seed:X}")
                     if shiny:
                         print(f"Shiny: " + Back.GREEN + f"{shiny}" + Style.RESET_ALL)
                     else:
@@ -310,116 +333,117 @@ if __name__ == "__main__":
                     print("This is a common spawn, ignoring.")
                     print()
             elif not shinyfilter:
-                if i not in [0,4,8,12,16,20] and locvar.lower() != "unknown":
-                    print(f"Shinyfilter: {shinyfilter}")
-                    print(f"Generator Seed: {hex(generator_seed)}")
-                    if shiny:
-                        print(f"Shiny: " + Back.GREEN + f"{shiny}" + Style.RESET_ALL)
-                    else:
-                        print(f"Shiny: " + Fore.RED + f"{shiny}" + Style.RESET_ALL)
-                    print(f"Location: {locvar}")
+#                if i not in [0,4,8,12,16,20] and locvar.lower() != "unknown":
+                print(f"Generator Seed: {generator_seed:X}")
+                if shiny:
+                    print(f"Shiny: " + Back.GREEN + f"{shiny}" + Style.RESET_ALL)
+                else:
+                    print(f"Shiny: " + Fore.RED + f"{shiny}" + Style.RESET_ALL)
+                print(f"Location: {locvar}")
+                print(f"Encounter Slot: {encslot}")
+                if mapval==1:
                     print(f"Encounter Slot: {encslot}")
-                    if mapval==1:
-                        print(f"Encounter Slot: {encslot}")
-                        if encslot < 100:
-                            print(f"Species: Sneasel")
-                        elif encslot >100 and encslot < 101:
-                            print(f"Species: AlphaSneasel")
-                        elif encslot > 101 and encslot < 111:
-                            print(f"Species: Weavile")
-                        elif encslot > 111 and encslot < 112:
-                            print(f"Species: AlphaWeavile")
-                    elif mapval == 2:
-                        if encslot < 100:
-                            print(f"Species: Porygon")
-                        elif encslot >100 and encslot < 101:
-                            print(f"Species: AlphaPorygon")
-                        elif encslot > 101 and encslot < 111:
-                            print(f"Species: Porygon2")
-                        elif encslot > 111 and encslot < 112:
-                            print(f"Species: AlphaPorygon2")
-                        elif encslot > 112 and encslot < 117:
-                            print(f"Species: Porygon-Z")
-                        elif encslot > 117 and encslot < 118:
-                            print(f"Species: AlphaPorygon-Z")
-                        elif encslot > 118 and encslot < 218:
-                            print(f"Species: Cyndaquil")
-                        elif encslot > 218 and encslot < 219:
-                            print(f"Species: AlphaCyndaquil")
-                        elif encslot > 219 and encslot < 269:
-                            print(f"Species: Quilava")
-                        elif encslot >269 and encslot <270:
-                            print(f"Species: AlphaQuilava")
-                        elif encslot >270 and encslot <275:
-                            print(f"Species: Typhlosion")
-                        else:
-                            print(f"Species: AlphaTyphlosion")
-                    elif mapval==3:
-                        print(f"Encounter Slot: {encslot}")
-                        if encslot < 100:
-                            print(f"Species: Magnemite")
-                        elif encslot >100 and encslot <101:
-                            print(f"Species: AlphaMagnemite")
-                        elif encslot >101 and encslot <151:
-                            print(f"Species: Magneton")
-                        elif encslot >151 and encslot <152:
-                            print(f"Species: AlphaMagneton")
-                        elif encslot >152 and encslot <162:
-                            print(f"Species: Magnezone")
-                        else:
-                            print(f"Species: AlphaMagnezone")
-                    elif mapval==4:
-                        if encslot < 100:
-                            print(f"Species: Cranidos")
-                        elif encslot >100 and encslot < 101:
-                            print(f"Species: AlphaCranidos")
-                        elif encslot > 101 and encslot < 111:
-                            print(f"Species: Rampardos")
-                        elif encslot > 111 and encslot < 112:
-                            print(f"Species: AlphaRampardos")
-                        elif encslot > 112 and encslot < 212:
-                            print(f"Species: Shieldon")
-                        elif encslot > 212 and encslot < 213:
-                            print(f"Species: AlphaShieldon")
-                        elif encslot > 213 and encslot < 223:
-                            print(f"Species: Bastiodon")
-                        elif encslot > 223 and encslot < 224:
-                            print(f"Species: AlphaBastiodon")
-                        elif encslot > 224 and encslot < 324:
-                            print(f"Species: Rowlet")
-                        elif encslot >324 and encslot <325:
-                            print(f"Species: AlphaRowlet")
-                        elif encslot >325 and encslot <375:
-                            print(f"Species: Dartrix")
-                        elif encslot >375 and encslot <376:
-                            print(f"Species: AlphaDartrix")
-                        elif encslot >376 and encslot <381:
-                            print(f"Species: Decidueye")
-                        else:
-                            print(f"Species: AlphaDecidueye")
-                    if mapval==5:
-                        if encslot < 100:
-                            print(f"Species: Scizor")
-                        elif encslot >100 and encslot < 101:
-                            print(f"Species: AlphaScizor")
-                        elif encslot > 101 and encslot < 201:
-                            print(f"Species: Oshawott")
-                        elif encslot > 201 and encslot < 202:
-                            print(f"Species: AlphaOshawott")
-                        elif encslot > 202 and encslot < 252:
-                            print(f"Species: Dewott")
-                        elif encslot > 252 and encslot < 253:
-                            print(f"Species: AlphaDewott")
-                        elif encslot > 253 and encslot < 258:
-                            print(f"Species: Samurott")
-                        else:
-                            print(f"Species: AlphaSamurott")
-                    print(f"EC: {ec:X} PID: {pid:X}")
-                    print(f"Nature: {Util.STRINGS.natures[nature]} Ability: {ability}")
-                    print(ivs)
-                    print()
+                    if encslot < 100:
+                        print(f"Species: Sneasel")
+                    elif encslot >100 and encslot < 101:
+                        print(f"Species: AlphaSneasel")
+                    elif encslot > 101 and encslot < 111:
+                        print(f"Species: Weavile")
+                    elif encslot > 111 and encslot < 112:
+                        print(f"Species: AlphaWeavile")
+                elif mapval == 2:
+                    if encslot < 100:
+                        print(f"Species: Porygon")
+                    elif encslot >100 and encslot < 101:
+                        print(f"Species: AlphaPorygon")
+                    elif encslot > 101 and encslot < 111:
+                        print(f"Species: Porygon2")
+                    elif encslot > 111 and encslot < 112:
+                        print(f"Species: AlphaPorygon2")
+                    elif encslot > 112 and encslot < 117:
+                        print(f"Species: Porygon-Z")
+                    elif encslot > 117 and encslot < 118:
+                        print(f"Species: AlphaPorygon-Z")
+                    elif encslot > 118 and encslot < 218:
+                        print(f"Species: Cyndaquil")
+                    elif encslot > 218 and encslot < 219:
+                        print(f"Species: AlphaCyndaquil")
+                    elif encslot > 219 and encslot < 269:
+                        print(f"Species: Quilava")
+                    elif encslot >269 and encslot <270:
+                        print(f"Species: AlphaQuilava")
+                    elif encslot >270 and encslot <275:
+                        print(f"Species: Typhlosion")
+                    else:
+                        print(f"Species: AlphaTyphlosion")
+                elif mapval==3:
+                    print(f"Encounter Slot: {encslot}")
+                    if encslot < 100:
+                        print(f"Species: Magnemite")
+                    elif encslot >100 and encslot <101:
+                        print(f"Species: AlphaMagnemite")
+                    elif encslot >101 and encslot <151:
+                        print(f"Species: Magneton")
+                    elif encslot >151 and encslot <152:
+                        print(f"Species: AlphaMagneton")
+                    elif encslot >152 and encslot <162:
+                        print(f"Species: Magnezone")
+                    else:
+                        print(f"Species: AlphaMagnezone")
+                elif mapval==4:
+                    if encslot < 100:
+                        print(f"Species: Cranidos")
+                    elif encslot >100 and encslot < 101:
+                        print(f"Species: AlphaCranidos")
+                    elif encslot > 101 and encslot < 111:
+                        print(f"Species: Rampardos")
+                    elif encslot > 111 and encslot < 112:
+                        print(f"Species: AlphaRampardos")
+                    elif encslot > 112 and encslot < 212:
+                        print(f"Species: Shieldon")
+                    elif encslot > 212 and encslot < 213:
+                        print(f"Species: AlphaShieldon")
+                    elif encslot > 213 and encslot < 223:
+                        print(f"Species: Bastiodon")
+                    elif encslot > 223 and encslot < 224:
+                        print(f"Species: AlphaBastiodon")
+                    elif encslot > 224 and encslot < 324:
+                        print(f"Species: Rowlet")
+                    elif encslot >324 and encslot <325:
+                        print(f"Species: AlphaRowlet")
+                    elif encslot >325 and encslot <375:
+                        print(f"Species: Dartrix")
+                    elif encslot >375 and encslot <376:
+                        print(f"Species: AlphaDartrix")
+                    elif encslot >376 and encslot <381:
+                        print(f"Species: Decidueye")
+                    else:
+                        print(f"Species: AlphaDecidueye")
+                if mapval==5:
+                    if encslot < 100:
+                        print(f"Species: Scizor")
+                    elif encslot >100 and encslot < 101:
+                        print(f"Species: AlphaScizor")
+                    elif encslot > 101 and encslot < 201:
+                        print(f"Species: Oshawott")
+                    elif encslot > 201 and encslot < 202:
+                        print(f"Species: AlphaOshawott")
+                    elif encslot > 202 and encslot < 252:
+                        print(f"Species: Dewott")
+                    elif encslot > 252 and encslot < 253:
+                        print(f"Species: AlphaDewott")
+                    elif encslot > 253 and encslot < 258:
+                        print(f"Species: Samurott")
+                    else:
+                        print(f"Species: AlphaSamurott")
+                print(f"EC: {ec:X} PID: {pid:X}")
+                print(f"Nature: {Util.STRINGS.natures[nature]} Ability: {ability}")
+                print(ivs)
+                print()
+                """
                 else:
                     print("This is a common spawn, ignoring.")
                     print()
+                """
             else:
                 print(f"Sorry, no shiny found for Group {i}, try again!\n")
