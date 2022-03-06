@@ -48,10 +48,18 @@ def generate_from_seed(seed,rolls,guaranteed_ivs=0,set_gender=False):
     nature = rng.rand(25)
     return ec,pid,ivs,ability,gender,nature,shiny
 
-def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storage):
+def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storage,spawns,true_spawns,isbonus=False,isalpha=False):
     """Generate all the pokemon of an outbreak based on a provided aggressive path"""
     # pylint: disable=too-many-locals, too-many-arguments
     # the generation is unique to each path, no use in splitting this function
+    if isbonus and isalpha:
+        #print("bonus nonalpha - guaranteed IVs 3"
+        guaranteed_ivs = 4
+    elif isbonus and not isalpha:
+        #print("bonus alpha - Guaranteed IVs 4")
+        guaranteed_ivs = 3
+    else:
+        guaranteed_ivs = 0
     main_rng = XOROSHIRO(group_seed)
     for init_spawn in range(1,5):
         generator_seed = main_rng.next()
@@ -59,9 +67,11 @@ def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storag
         fixed_rng = XOROSHIRO(generator_seed)
         slot = (fixed_rng.next() / (2**64) * 101)
         alpha = slot >= 100
+        if alpha and not isbonus:
+            guaranteed_ivs = 3
         fixed_seed = fixed_rng.next()
         encryption_constant,pid,ivs,ability,gender,nature,shiny = \
-            generate_from_seed(fixed_seed,rolls,3 if alpha else 0)
+            generate_from_seed(fixed_seed,rolls,guaranteed_ivs)
         if shiny and not fixed_seed in uniques:
             uniques.add(fixed_seed)
             storage.append(
@@ -84,7 +94,7 @@ def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storag
             fixed_seed = fixed_rng.next()
             encryption_constant,pid,ivs,ability,gender,nature,shiny = \
                 generate_from_seed(fixed_seed,rolls,3 if alpha else 0)
-            if shiny and not fixed_seed in uniques:
+            if shiny and not fixed_seed in uniques and (sum(steps[:step_i]) + pokemon + 4) <= true_spawns:
                 uniques.add(fixed_seed)
                 storage.append(
                    f"Path: {'|'.join(str(s) for s in steps[:step_i]+[pokemon])} " \
@@ -109,6 +119,9 @@ def get_final(spawns):
 def aggressive_outbreak_pathfind(group_seed,
                                  rolls,
                                  spawns,
+                                 true_spawns,
+                                 isbonus=False,
+                                 isalpha=False,
                                  step=0,
                                  steps=None,
                                  uniques=None,
@@ -128,6 +141,9 @@ def aggressive_outbreak_pathfind(group_seed,
             if aggressive_outbreak_pathfind(group_seed,
                                             rolls,
                                             spawns,
+                                            true_spawns,
+                                            isbonus,
+                                            isalpha,
                                             _step,
                                             _steps,
                                             uniques,
@@ -135,25 +151,26 @@ def aggressive_outbreak_pathfind(group_seed,
                 return storage
     else:
         _steps.append(spawns - sum(_steps) - 4)
-        generate_mass_outbreak_aggressive_path(group_seed,rolls,_steps,uniques,storage)
+        generate_mass_outbreak_aggressive_path(group_seed,rolls,_steps,uniques,storage,spawns,true_spawns,isbonus,isalpha)
         if _steps == get_final(spawns):
             return storage
     return None
 
-def next_filtered_aggressive_outbreak_pathfind(group_seed,rolls,spawns):
+def next_filtered_aggressive_outbreak_pathfind(group_seed,rolls,spawns,true_spawns,isbonus,isalpha=False):
     """Check the next outbreak advances until an aggressive path to a pokemon that
        passes poke_filter exists"""
     main_rng = XOROSHIRO(group_seed)
     result = []
     advance = -1
-    while len(result) == 0 and advance<1:
+    
+    while len(result) == 0 and advance < 1:
         if advance != -1:
             for _ in range(4*2):
                 main_rng.next()
             group_seed = main_rng.next()
             main_rng.reseed(group_seed)
         advance += 1
-        result = aggressive_outbreak_pathfind(group_seed, rolls, spawns)
+        result = aggressive_outbreak_pathfind(group_seed, rolls, spawns,true_spawns,isbonus,isalpha)
         if result is None:
             result = []
     if advance == 0:
@@ -165,7 +182,13 @@ def next_filtered_aggressive_outbreak_pathfind(group_seed,rolls,spawns):
     else:
         return f"Spawns: {spawns}\n{info}"
 
-def bonus_round(group_seed,rolls,mapcount):
+def bonus_round(group_seed,rolls,alpha):
+    if alpha:
+        guaranteed_ivs = 4
+    else:
+        guaranteed_ivs = 3
+    max_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * mapcount+0x60:X}",4)
+    print(f"Bonus round max spawns: {max_spawns}")
     main_rng = XOROSHIRO(group_seed)
     for init_spawn in range(4):
         generator_seed = main_rng.next()
@@ -173,13 +196,13 @@ def bonus_round(group_seed,rolls,mapcount):
         fixed_rng = XOROSHIRO(generator_seed)
         fixed_rng.next()
         fixed_seed = fixed_rng.next()
-        ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls)
-        #if shiny:
-        print(f"{generator_seed:X} Shiny: {shiny} BONUS ROUND Init Spawn {init_spawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}\n\n")
+        ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls,guaranteed_ivs)
+        if shiny:
+            print(f"{generator_seed:X} All Alpha: {alpha} Shiny: {shiny} BONUS ROUND Init Spawn {init_spawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}\n")
     group_seed = main_rng.next()
     main_rng = XOROSHIRO(group_seed)
     respawn_rng = XOROSHIRO(group_seed)
-    for respawn in range(1,6):
+    for respawn in range(1,max_spawns-3):
         generator_seed = respawn_rng.next()
         respawn_rng.next() # spawner 1's seed, unused
         respawn_rng = XOROSHIRO(respawn_rng.next())
@@ -187,10 +210,60 @@ def bonus_round(group_seed,rolls,mapcount):
         fixed_rng.next()
         fixed_seed = fixed_rng.next()
         ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls)
-        #if shiny:
-        print(f"{generator_seed:X} Shiny: {shiny} BONUS ROUND Respawn {respawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}\n\n")
+        if shiny:
+            print(f"{generator_seed:X} All Alpha: {alpha} Shiny: {shiny} BONUS ROUND Respawn {respawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}\n")
 
-def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,initial=False):
+def get_bonus_seed(group_id,rolls,mapcount,aggro=False,initial=False):
+    species = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount:X}",2)
+    #print(f"Species Pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount:X}")
+    if species != 0:
+        if species == 201:
+            rolls = 19
+        poke = pypokedex.get(dex=species)
+        print()
+        #print(f"Species = {poke.name}")
+        group_seed = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x44:X}",8)
+        if initial:
+            group_seed = (group_seed - 0x82A2B175229D6A5B) & 0xFFFFFFFFFFFFFFFF
+            #print(f"Group Seed (initial): {group_seed:X}")
+        #print(f"Group seed pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x3c:X}")
+        max_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x4c:X}",4)
+        curr_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x50:X}",4)
+        #print(f"Max Spawns: {max_spawns} Curr Spawns: {curr_spawns}")
+       # print(f"Max Spawns Pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x4c:X}")
+        #print(f"Group Seed: {group_seed:X}")
+        main_rng = XOROSHIRO(group_seed)
+        for init_spawn in range(4):
+            generator_seed = main_rng.next()
+            main_rng.next() # spawner 1's seed, unused
+            fixed_rng = XOROSHIRO(generator_seed)
+            fixed_rng.next()
+            fixed_seed = fixed_rng.next()
+            ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls)
+            #if shiny:
+                #print(f"{generator_seed:X} Shiny: {shiny} Init Spawn {init_spawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}")
+        group_seed = main_rng.next()
+        main_rng = XOROSHIRO(group_seed)
+        respawn_rng = XOROSHIRO(group_seed)
+        generator_seed = 0
+        for respawn in range(1,max_spawns-3):
+            generator_seed = respawn_rng.next()
+            respawn_rng.next() # spawner 1's seed, unused
+            respawn_rng = XOROSHIRO(respawn_rng.next())
+            fixed_rng = XOROSHIRO(generator_seed)
+            fixed_rng.next()
+            fixed_seed = fixed_rng.next()
+            ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls)
+            #if shiny:
+                #print(f"{generator_seed:X} Shiny: {shiny} Respawn {respawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}")
+        bonus_seed = (respawn_rng.next() - 0x82A2B175229D6A5B) & 0xFFFFFFFFFFFFFFFF
+        return bonus_seed
+    else:
+        print()
+        print(f"Group {group_id} not active")
+        return 0
+    
+def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,bonus_flag,initial=False):
     species = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount:X}",2)
     #print(f"Species Pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount:X}")
     if species != 0:
@@ -210,9 +283,11 @@ def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,initial=False):
        # print(f"Max Spawns Pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x4c:X}")
         if aggro:
         # should display multiple aggressive paths like whats done with passive
+            true_spawns = max_spawns
+            max_spawns += 3
             display = ["",
                        f"Group Seed: {group_seed:X}\n"
-                       + next_filtered_aggressive_outbreak_pathfind(group_seed,rolls,max_spawns)]
+                       + next_filtered_aggressive_outbreak_pathfind(group_seed,rolls,max_spawns,true_spawns,False,False)]
             return display
         else:
             print(f"Group Seed: {group_seed:X}")
@@ -240,8 +315,9 @@ def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,initial=False):
                 ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls)
                 if shiny:
                     print(f"{generator_seed:X} Shiny: {shiny} Respawn {respawn} EC: {ec:08X} PID: {pid:08X} Nature: {Util.STRINGS.natures[nature]} {'/'.join(str(iv) for iv in ivs)}")
-            bonus_seed = group_seed
-            #bonus_round(group_seed,rolls,mapcount)
+            bonus_seed = (respawn_rng.next() - 0x82A2B175229D6A5B) & 0xFFFFFFFFFFFFFFFF
+            if bonus_flag:
+                bonus_round(bonus_seed,rolls,True)
     else:
         print()
         print(f"Group {group_id} not active")
@@ -255,7 +331,23 @@ if __name__ == "__main__":
     #initial = False if input("Are you in the map? Y/N: ").lower() == 'n' else True
 
     for i in range(0,15):
-        display = read_mass_outbreak_rng(i,rolls,mapcount,aggro)
+        print()
+        print(f"Checking group {i}: ")
+        print()
+        bonus_flag = True if reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * mapcount+0x18:X}",1) == 1 else False
+        print(f"Bonus Flag: {bonus_flag}")
+        display = read_mass_outbreak_rng(i,rolls,mapcount,aggro,bonus_flag)
         if aggro:
             for p in range(0,len(display)):
                 print(display[p])
+            bonus_seed = get_bonus_seed(i,rolls,mapcount)
+            if bonus_flag:
+                isbonus = True
+                true_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * mapcount+0x60:X}",4)
+                max_spawns = 10
+                nonalpha = ["",
+                           f"Group Seed: {bonus_seed:X}\n"
+                           + next_filtered_aggressive_outbreak_pathfind(bonus_seed,rolls,max_spawns,true_spawns,isbonus,False)]
+                print(f"Bonus Round:")
+                for q in range(0,len(nonalpha)):
+                    print(nonalpha[q])
