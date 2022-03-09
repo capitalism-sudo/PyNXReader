@@ -579,7 +579,7 @@ if __name__ == "__main__":
                             if "Nothing found" not in nonalpha[0]:
                                 for v in range(0,len(nonalpha)):
                                     print()
-                                    print(f" First Round Path: {value}\n")
+                                    print(f" First Round Path: {value} + [1 | 1 | 1 | 1]\n")
                                     print(nonalpha[v])
                         """
                         print(f"Bonus Round:")
