@@ -197,7 +197,7 @@ def next_filtered_aggressive_outbreak_pathfind(group_seed,rolls,spawns,true_spaw
     if advance != 0:
         return f"Nothing found for this outbreak. Spawns: {true_spawns}\n{info}"
     else:
-        return f"Spawns: {spawns}\n{info}"
+        return f"Spawns: {true_spawns}\n{info}"
 
 def bonus_round(group_seed,rolls,group_id):
     max_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * maps+0x60:X}",4)
@@ -386,6 +386,7 @@ def generate_mass_outbreak_aggressive_path_seed(group_seed,rolls,steps,uniques,s
     # the generation is unique to each path, no use in splitting this function
     #group_seed = true_seed
     #print(f"True Seed: {group_seed:X}")
+    respawns = true_spawns - 4
     main_rng = XOROSHIRO(group_seed)
     for init_spawn in range(4):
         generator_seed = main_rng.next()
@@ -425,23 +426,12 @@ def generate_mass_outbreak_aggressive_path_seed(group_seed,rolls,steps,uniques,s
 
         #seed = (bonus_seed.next() - 0x82A2B175229D6A5B) & 0xFFFFFFFFFFFFFFFF
         seed = bonus_seed.next()
-        if f"{seed:X}" == "F7E141984B77E9AD":
-            print("Seed {seed:X} found! At {'|'.join(str(s) for s in steps[:step_i]+[pokemon])}, step_i = {step_i}")
-            break
-        if ((steps[:step_i] + [pokemon]) not in uniques) and (sum(steps[:step_i]) + pokemon + 4) == true_spawns:
-            #print(f"Adding seed: {seed:X}")
-            #uniques.append(seed)
-            #print(f"Step:[step_i] = {steps}")
-            #print(f"Step[:step_i] + [pokemon] = {steps + [pokemon]}")
+        #if ((steps[:step_i] + [pokemon]) not in uniques) and (sum(steps[:step_i]) + pokemon + 1) == true_spawns and ((sum(steps[:step_i]) + pokemon) - respawns) <=0:
+        if ((steps[:step_i] + [pokemon]) not in uniques) and ((sum(steps[:step_i]) + pokemon) - respawns >=0 and (sum(steps[:step_i]) - respawns) < 0):
             add1 = steps[:step_i]
-            #print(f"add1: {add1}")
             addition = add1 + [pokemon]
-            #print(f"Addition: {addition}")
             uniques.append(addition)
-            #print(uniques)
-
-        #seed = (fixed_seed - 0x82A2B175229D6A5B) & 0xFFFFFFFFFFFFFFFF
-        #print(f"Seed: {seed:X}")
+            
         
         
 
@@ -558,7 +548,8 @@ if __name__ == "__main__":
                         isbonus = True
                         #true_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * maps+0x60:X}",4)
                         true_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * maps+0x4c:X}",4)
-                        max_spawns = true_spawns+3
+                        extra_count = true_spawns
+                        max_spawns = true_spawns+4
                         group_seed = get_group_seed(i,maps)
                         
                         bonus_seed = next_filtered_aggressive_outbreak_pathfind_seed(group_seed,rolls,max_spawns,true_spawns,i,isbonus,group_seed,False)
@@ -567,19 +558,21 @@ if __name__ == "__main__":
                         #print(paths)
                         #print(bonus_seed)
                         #print(len(paths))
-                        #print(len(bonus_seed))
+                        print(f" Total Paths found: {len(bonus_seed)}")
                         
                         for t,value in enumerate(bonus_seed):
                             #print(f"Seed: {value}")
                             #print(f"Path {value}:")
                             seed = get_bonus_seed(i,rolls,maps,value)
+                            extras = extra_count - sum(value)
+                            extras = [1] * extras
                             #print(f"Seed: {seed:X}")
                             nonalpha = [next_filtered_aggressive_outbreak_pathfind(seed,rolls,max_spawns,true_spawns,i,isbonus,False)]
                             #print(nonalpha[0])
                             if "Nothing found" not in nonalpha[0]:
                                 for v in range(0,len(nonalpha)):
                                     print()
-                                    print(f" First Round Path: {value} + [1 | 1 | 1 | 1]\n")
+                                    print(f" First Round Path: {value} + {extras}\n")
                                     print(nonalpha[v])
                         """
                         print(f"Bonus Round:")
