@@ -63,6 +63,14 @@ In order to run the bot do the following:
 * $restart is used to close then re open the scanner thread
 * $shutdown is used to close the scanner thread and the discord bot
 
+### Usage: PLA MMO Filter
+* aggro - This will cause the program to run in aggro pathing only mode. Set to false to do non aggro pathing.
+* alphafilter - If set to true, it will filter out any result that is not an alpha pokemon.
+* shinyfilter - If set to true, this will filter out any non shiny results. If used with alphafilter, this will only display shiny alpha pokemon.
+* blacklist - Put species name in quotes, separated by commas (example: ["Gastly","Haunter","Machop"]) and these species will not be checked. Bonus rounds will be ignored too. Use at own peril.
+* whitelist - Fill in the same as blacklist. This will display all shiny results even if alphafilter is set to true.
+* rolls - put in your number of shiny rolls.
+
 ## Credits:
 * olliz0r for his great [sys-botbase](https://github.com/olliz0r/sys-botbase) which let open sockets on the Nintendo Switch
 * spacemeowx2 for his livesafer [sys-module](https://github.com/spacemeowx2/ldn_mitm). It avoids Switch to disconnect from wifi once game is opened

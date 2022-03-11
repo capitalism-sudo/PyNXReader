@@ -17,6 +17,23 @@ config = json.load(open("../../config.json"))
 reader = NXReader(config["IP"],usb_connection=config["USB"])
 colorama.init()
 
+filters = json.load(open("../../mmofilter.json"))
+rolls = filters["rolls"]
+alphafilter = filters["alphafilter"]
+whitelist = filters["whitelist"]
+blacklist = filters["blacklist"]
+shinyfilter = filters["shinyfilter"]
+defaultaggro = filters["aggro"]
+blacklistfilter = '\t'.join(blacklist)
+whitelistfilter = '\t'.join(whitelist)
+
+mapnamevals = {
+    "5504":"Crimson Mirelands",
+    "5351":"Alabaster Icelands",
+    "519E":"Coronet Highlands",
+    "5A1D":"Obsidian Fieldlands",
+    "56B7":"Cobalt Coastlands"}
+
 def signal_handler(signal, advances): #CTRL+C handler
     print("Stop request")
     reader.close()
@@ -61,6 +78,12 @@ def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storag
         fixed_rng = XOROSHIRO(generator_seed)
         encounter_slot = (fixed_rng.next() / (2**64)) * encsum
         species,alpha = get_species(encounters,encounter_slot)
+        if "-" in species:
+            noformspecies = species.rpartition('-')[0]
+        else:
+            noformspecies = species
+        if noformspecies in blacklistfilter:
+            continue
         if isbonus and alpha:
             guaranteed_ivs = 4
         elif isbonus or alpha:
@@ -70,7 +93,9 @@ def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storag
         fixed_seed = fixed_rng.next()
         encryption_constant,pid,ivs,ability,gender,nature,shiny = \
             generate_from_seed(fixed_seed,rolls,guaranteed_ivs)
-        if shiny and not fixed_seed in uniques:
+        filtered = ((((alphafilter and not alpha) or (noformspecies in blacklistfilter)) or (shinyfilter and not shiny)) and (noformspecies not in whitelistfilter or (shinyfilter and not shiny)))
+        #print(f"Species: {noformspecies} alphafilter: {alphafilter} shinyfilter: {shinyfilter} blacklistfilter: {blacklistfilter} whitelistfilter: {whitelistfilter} alpha: {alpha}")
+        if not filtered and not fixed_seed in uniques:
         #if not fixed_seed in uniques and isbonus:
             uniques.add(fixed_seed)
             storage.append(
@@ -91,6 +116,12 @@ def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storag
             fixed_rng = XOROSHIRO(generator_seed)
             encounter_slot = (fixed_rng.next() / (2**64)) * encsum
             species,alpha = get_species(encounters,encounter_slot)
+            if "-" in species:
+                noformspecies = species.rpartition('-')[0]
+            else:
+                noformspecies = species
+            if noformspecies in blacklistfilter:
+                continue
             if isbonus and alpha:
                 guaranteed_ivs = 4
             elif isbonus or alpha:
@@ -100,7 +131,8 @@ def generate_mass_outbreak_aggressive_path(group_seed,rolls,steps,uniques,storag
             fixed_seed = fixed_rng.next()
             encryption_constant,pid,ivs,ability,gender,nature,shiny = \
                 generate_from_seed(fixed_seed,rolls,guaranteed_ivs)
-            if shiny and not fixed_seed in uniques and (sum(steps[:step_i]) + pokemon + 4) <= true_spawns:
+            filtered = ((((alphafilter and not alpha) or (noformspecies in blacklistfilter)) or (shinyfilter and not shiny)) and (noformspecies not in whitelistfilter or (shinyfilter and not shiny)))
+            if not filtered and not fixed_seed in uniques and (sum(steps[:step_i]) + pokemon + 4) <= true_spawns:
             #if not fixed_seed in uniques and (sum(steps[:step_i]) + pokemon + 4) <= true_spawns and isbonus:
                 uniques.add(fixed_seed)
                 storage.append(
@@ -210,6 +242,12 @@ def bonus_round(group_seed,rolls,group_id):
         fixed_rng = XOROSHIRO(generator_seed)
         encounter_slot = (fixed_rng.next() / (2**64)) * encsum
         species,alpha = get_species(encounters,encounter_slot)
+        if "-" in species:
+            noformspecies = species.rpartition('-')[0]
+        else:
+            noformspecies = species
+        if noformspecies in blacklistfilter:
+            continue
         fixed_seed = fixed_rng.next()
         ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls,4 if alpha else 3)
         if shiny:
@@ -224,6 +262,12 @@ def bonus_round(group_seed,rolls,group_id):
         fixed_rng = XOROSHIRO(generator_seed)
         encounter_slot = (fixed_rng.next() / (2**64)) * encsum
         species,alpha = get_species(encounters,encounter_slot)
+        if "-" in species:
+            noformspecies = species.rpartition('-')[0]
+        else:
+            noformspecies = species
+        if noformspecies in blacklistfilter:
+            continue
         fixed_seed = fixed_rng.next()
         ec,pid,ivs,ability,gender,nature,shiny = generate_from_seed(fixed_seed,rolls,4 if alpha else 3)
         if shiny:
@@ -274,7 +318,7 @@ def get_bonus_seed(group_id,rolls,mapcount,path):
         print(f"Group {group_id} not active")
         return None
     
-def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,bonus_flag,initial=False):
+def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,bonus_flag):
     species = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount:X}",2)
     print()
     print(f"Pokemon Species Group: {Util.STRINGS.species[species]}")
@@ -283,14 +327,16 @@ def read_mass_outbreak_rng(group_id,rolls,mapcount,aggro,bonus_flag,initial=Fals
         if species == 201:
             rolls = 19
         group_seed = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x44:X}",8)
-        if initial:
-            group_seed = (group_seed - 0x82A2B175229D6A5B) & 0xFFFFFFFFFFFFFFFF
-            print(f"Group Seed (initial): {group_seed:X}")
         #print(f"Group seed pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x3c:X}")
         max_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x4c:X}",4)
+        if Util.STRINGS.species[species] in blacklistfilter:
+            print(f"Blacklisted Pokemon Species: {Util.STRINGS.species[species]}, skipping")
+            if bonus_flag and not aggro:
+                path = [1] * (max_spawns - 4)
+                bonus_seed = get_bonus_seed(group_id,rolls,mapcount,path)
+                bonus_round(bonus_seed,rolls,group_id)
+            return None
         curr_spawns = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x50:X}",4)
-        #print(f"Max Spawns: {max_spawns} Curr Spawns: {curr_spawns}")
-       # print(f"Max Spawns Pointer: [[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+group_id*0x90 + 0xb80 * mapcount+0x4c:X}")
         if aggro:
         # should display multiple aggressive paths like whats done with passive
             true_spawns = max_spawns
@@ -375,7 +421,7 @@ def get_species(encounters,encounter_slot):
             alpha = species['alpha']
             slot = species['name']
             if alpha:
-                slot = "Alpha-"+slot
+                slot = "Alpha "+slot
             return slot,alpha
 
     return "",False
@@ -521,16 +567,25 @@ def get_group_seed(group_id,mapcount):
     return group_seed
     
 if __name__ == "__main__":
-    rolls = int(input("Shiny Rolls For Species: "))
+    #rolls = int(input("Shiny Rolls For Species: "))
     #maps = int(input("Map Count: "))
-    aggro = True if input("Aggressive Pathfind? Y/N ").lower() == 'y' else False
+    print(f"Rolls: {rolls}")
+    aggro = True if defaultaggro else False
     #initial = False if input("Are you in the map? Y/N: ").lower() == 'n' else True
     display = []
+    mapname = "Unknown"
 
     for maps in range(0,5):
         for i in range(0,15):
+            if i == 0:
+                mapname = reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4 + 0xb80 * maps - 0x24:X}",2)
+                #print(f"Mapname pointer: [[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * maps - 0x24:X}")
+                #print(f"Mapname: {mapname:X}")
+                mapname = f"{mapname:X}"
+                mapname = mapnamevals.get(mapname, "Forbidden Zone")
+                #print(f"Mapname: {mapname}")
             print()
-            print(f"Checking group {i}, Map {maps}: ")
+            print(f"Checking group {i}, in the {mapname}: ")
             print()
             bonus_flag = True if reader.read_pointer_int(f"[[[[[[main+42BA6B0]+2B0]+58]+18]+{0x1d4+i*0x90 + 0xb80 * maps+0x18:X}",1) == 1 else False
             display = read_mass_outbreak_rng(i,rolls,maps,aggro,bonus_flag)

@@ -1,0 +1,17 @@
+{
+	"aggro":true,
+	"alphafilter":true,
+	"shinyfilter":true,
+	"blacklist": [],
+	"whitelist": [
+		"Unown",
+		"Spiritomb",
+		"Basculin",
+		"Vulpix",
+		"Voltorb",
+		"Zorua",
+		"Ponyta",
+		"Gible"
+	],
+	"rolls":17
+}
